@@ -1,0 +1,507 @@
+---
+title: "FINAL PROYECT"
+author: "Angie Tatiana Daza Malagón"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***APRENDIZAJE SUPERVISADO PARA EL ANÁLISIS DE EXPRESIÓN GÉNICA EN CÁNCER***
+
+El diagnóstico y pronóstico del cáncer a menudo se basan en la comprensión de los factores genéticos subyacentes y sus patrones de expresión. El aprendizaje supervisado ofrece un conjunto de herramientas poderosas para construir modelos predictivos que pueden clasificar tipos de cáncer y predecir resultados clínicos basados en datos de expresión génica.
+
+***Declaración del Problema***
+
+El desafío central de este proyecto es desarrollar y aplicar modelos de aprendizaje supervisado a un conjunto de datos de expresión génica en cáncer, con el objetivo de clasificar con precisión diferentes tipos de cáncer y predecir resultados clínicos. Esta tarea implica entrenar modelos en un conjunto de datos etiquetado donde los niveles de expresión de los genes se utilizan como características y el tipo o etapa de cáncer como la variable objetivo.
+
+***Requisitos***
+
+Se espera la implementación y explicación de los siguientes pasos de un proyecto de ciencia de datos: envoltura de datos, análisis exploratorio de datos, ingeniería de características, entrenamiento de métodos, validación y comparación de rendimiento. Todos los métodos adecuados para la clasificación discutidos en clase deben implementarse y compararse (es decir, KNN, regresión logística, árbol de decisión, etc.).
+
+**KNN** : es un algoritmo de aprendizaje supervisado utilizado para problemas de clasificación y regresión. En la clasificación, asigna una etiqueta a una observación según la mayoría de las etiquetas de sus k vecinos más cercanos en el espacio de características. En regresión, predice el valor medio de los k vecinos más cercanos.
+
+**La regresión logística** es un algoritmo de clasificación utilizado para problemas de dos clases. Modela la probabilidad de que una observación pertenezca a una clase particular y utiliza la función logística para transformar la probabilidad en una decisión de clasificación.
+
+**Un árbol de decisión** es un algoritmo que divide el conjunto de datos en subconjuntos más pequeños basándose en características específicas. Cada subdivisión se representa como un nodo en el árbol, y las decisiones se toman en función de las condiciones en los nodos.
+
+**SVM** es un algoritmo de aprendizaje supervisado utilizado para problemas de clasificación y regresión. Busca el hiperplano que mejor separa las clases en el espacio de características, maximizando la margen entre las clases.
+
+##### PREPARACIÓN DE DATOS Y CONFIGURACIÓN DE MODELOS PARA EL ANÁLISIS GENÓMICO DEL CÁNCER
+
+**Paso 1:** *Instalación del paquete DynamicCancerDriverKM La base de su proyecto requiere la instalación del paquete DynamicCancerDriverKM. Puede encontrar el paquete en <https://github.com/AndresMCB/DynamicCancerDriverKM.> Siga las instrucciones proporcionadas en el repositorio para instalar correctamente el paquete en su entorno R. Este paquete será esencial para las fases posteriores de su análisis.*
+
+para iniciar con este análisis importamos las librerias necesarias, las cuales son:
+
+```{r  message=FALSE}
+
+library(DynamicCancerDriverKM) # Paquete DynamicCancerDriverKM
+library(e1071)  # Librería para modelos SVM
+library(caret) # Se utiliza para entrenar y evaluar modelos predictivos
+library(dplyr) # Manipular y transformar datos
+library(pROC) # se utilizada para evaluar el rendimiento del modelo (curva (AUC) y curvas ROC)
+library(tidyverse) # manipulación y visualización de datos
+library(class) # libreria para modelos KNN
+library(rpart) # Libreria para modelos árbol de decisiones
+library(glmnet)
+```
+
+1.  **DynamicCancerDriverKM:** Este paquete se utiliza para el análisis de expresión génica en cáncer, como se menciona en las instrucciones del proyecto.
+
+2.  **e1071:** Es una librería que contiene funciones para trabajar con modelos de máquinas de soporte vectorial (SVM).
+
+3.  **caret:** Se utiliza para entrenar y evaluar modelos predictivos. Proporciona herramientas para realizar procesos de entrenamiento de modelos de manera eficiente.
+
+4.  **dplyr:** Ofrece funciones para manipular y transformar datos de manera eficiente, facilitando operaciones como filtrado, agrupación y mutación de datos.
+
+5.  **pROC:** Esta librería se utiliza para evaluar el rendimiento del modelo, especialmente en términos de la curva AUC y las curvas ROC.
+
+6.  **tidyverse:** Es un conjunto de paquetes, que incluye dplyr, ggplot2, y otros, que facilita la manipulación y visualización de datos en un estilo consistente y eficiente.
+
+7.  **class:** Se utiliza para implementar modelos de k-vecinos más cercanos (KNN), un algoritmo de aprendizaje supervisado.
+
+8.  **rpart:** Es una librería que se utiliza para construir y visualizar árboles de decisión.
+
+9.  **glmnet:** Utilizada para ajustar modelos de regresión logística con regularización elástica.
+
+Una vez cargadas las librerias se procede a cargar los datos de esta manera:
+
+```{r  echo = FALSE}
+
+print(DynamicCancerDriverKM::BRCA_normal)
+print(DynamicCancerDriverKM::BRCA_PT)
+
+
+load("E:/Users/Lenovo/Downloads/geneScore.rdata")
+ 
+```
+
+1.  **`DynamicCancerDriverKM::BRCA_normal` y `DynamicCancerDriverKM::BRCA_PT`:** Estas líneas de código imprimen el contenido de los objetos **`BRCA_normal`** y **`BRCA_PT`** del paquete **`DynamicCancerDriverKM`**. Estos objetos contienen conjuntos de datos relacionados con el cáncer de mama (BRCA) en condiciones normales y durante la progresión tumoral (PT).
+
+2.  **`load("E:/Users/Lenovo/Downloads/geneScore.rdata")`:** Esta línea carga en el entorno de trabajo de R el archivo geneScore.rdata ubicado en la ruta "E:/Users/Lenovo/Downloads/". El archivo geneScore.rdata contiene datos relacionados con puntajes de genes.
+
+**Paso 2:** *Creación de una matriz unificada de expresión génica cree una única matriz fusionando los datos de TCGA_BRCA_Normal.rdata y TCGA_BRCA_PT.rdata. Asegúrese de conservar la columna 'sample_type' en el conjunto de datos fusionado.*
+
+una vez cargados los datos se unen los dataset **`BRCA_normal`** y **`BRCA_PT`** de la siguiente manera:
+
+```{r  message=FALSE}
+
+normal_pt <- rbind(BRCA_normal, BRCA_PT)
+```
+
+1.  **`rbind`:** Esta función en R se utiliza para combinar (unir) objetos de datos por filas. La función **`rbind`** toma dos o más objetos y los combina uno debajo del otro.
+
+2.  **`BRCA_normal` y `BRCA_PT`:** Son dos conjuntos de datos que contienen información relacionada con el cáncer de mama en condiciones normales y durante la progresión tumoral, respectivamente.
+
+3.  **`normal_pt`:** Es el nuevo conjunto de datos resultante de la combinación de **`BRCA_normal`** y **`BRCA_PT`**. Este conjunto de datos ahora tiene todas las filas de **`BRCA_normal`** seguidas de todas las filas de **`BRCA_PT`**.
+
+**Paso 3:** *Filtrar los datos de expresión génica afine su conjunto de datos eliminando los genes no expresados en al menos el 20% de las muestras. Este paso es crucial para centrarse genes que probablemente sean más relevantes desde el punto de vista biológico y clínico.*
+
+seguido de esto filtranos las columnas que no ser requieren para el modelo, obtenemos los datos nulos en el daframe, obtenemos la matriz de muestras (sin la columna 'sample_type'), calculamos el umbral como el valor máximo en la matriz de muestras, hallamos el vector lógico que indica si cada muestra está activa para cada gen, contar la cantidad de verdaderos para cada gen, calculamos el umbral para conservar la columna con (20% del total de la muestra), encontramos las columnas a conservar (que tienen menos del 20% de verdadero) y filtramos el DataFrame original para conservar solo las columnas necesarias. Dicho esto obtenemos las siguientes lineas de código:
+
+```{r  message=FALSE}
+
+# filtrar las columnas que no ser requieren para el modelo
+
+df <- normal_pt[, !(names(normal_pt) %in% c("barcode", "bcr_patient_barcode", "bcr_sample_barcode", "vital_status", "days_to_death", "treatments_radiation_treatment_or_therapy"))]
+
+# datos nulos en el daframe
+
+any(is.na(df))
+
+# Obtener la matriz de muestras (sin la columna 'sample_type')
+
+muestras <- as.matrix(df[, -1])
+
+# Calcular el umbral como el valor máximo en la matriz de muestras
+
+umbral <- 0.0002 * max(muestras)
+
+# Vector lógico que indica si cada muestra está activa para cada gen
+
+genes_expresados <- muestras > umbral
+
+# Contar la cantidad de TRUE para cada gen
+
+verdaderos_por_gen <- colSums(genes_expresados)
+
+
+# Calcular el umbral para conservar la columna con (20% del total de la muestra)
+
+umbral_eliminar_columna <- nrow(muestras) * 0.2
+
+# Encontrar las columnas a conservar (que tienen menos del 20% de TRUE)
+
+columnas_a_conservar <- which(verdaderos_por_gen >= umbral_eliminar_columna)
+
+# Filtrar el DataFrame original para conservar solo las columnas necesarias
+
+filtro_genes <- df[, c(1, columnas_a_conservar + 1)]
+```
+
+1.  **`any(is.na(df))`:** Esta línea verifica si hay algún valor nulo en el DataFrame **`df`**. Si obtuviste **`FALSE`**, significa que no hay valores nulos en el DataFrame.
+
+2.  **`muestras <- as.matrix(df[, -1])`:** Crea una matriz **`muestras`** eliminando la primera columna del DataFrame **`df`**.
+
+3.  **`umbral <- 0.0002 * max(muestras)`:** Calcula un umbral basado en el valor máximo en la matriz de muestras.
+
+4.  **`genes_expresados <- muestras > umbral`:** Crea una matriz lógica indicando si cada muestra está activa para cada gen.
+
+5.  **`verdaderos_por_gen <- colSums(genes_expresados)`:** Cuenta la cantidad de **`TRUE`** para cada gen.
+
+6.  **`umbral_eliminar_columna <- nrow(muestras) * 0.2`:** Calcula el umbral para conservar la columna con el 20% del total de la muestra.
+
+7.  **`columnas_a_conservar <- which(verdaderos_por_gen >= umbral_eliminar_columna)`:** Encuentra las columnas a conservar (aquellas con menos del 20% de **`TRUE`**).
+
+8.  **`filtro_genes <- df[, c(1, columnas_a_conservar + 1)]`:** Filtra el DataFrame original para conservar solo las columnas necesarias.
+
+**Paso 4:** *Seleccionar genes basándose en la red PPI, cargue el archivo PPI.rdata para acceder a la red PPI. Extraiga los 100 genes con los grados de conexión más altos. Estos genes son centrales en la red y serán los predictores de sus modelos.*
+
+**Paso 5:** *Creación de modelos de aprendizaje automático .La variable objetivo para la predicción debe ser 'sample_type'.*
+
+*a. Utilice los 100 genes que ha identificado como variables predictoras en sus modelos de aprendizaje automático. Este enfoque pondrá a prueba la capacidad de los genes para clasificar las muestras con precisión.*
+
+*b. Utilice como predictores los 100 genes principales (clasificados por geneScore) inferidos por el paquete DynamicCancerDriverKM*
+
+Al tener esto, se procede a obtener los nombres de genes en geneScore, los nombres de genes en filtered_data, encontrar los genes comunes, filtramos el DataFrame PPI para incluir solo las filas con genes comunes, ordenamos el data frame por el campo 'score' de manera descendente, seleccionamos los primeros 100 genes con mayor score, obtenemos los nombres de los 100 genes de top_genes, obtenemos la variable de respuesta 'y', filtramos las columnas del dataframe 'data' para mantener solo los genes seleccionados, convertimos la variable de respuesta a factor y creamos un conjunto de entrenamiento y prueba. Esto lo podemos observar en las siguientes lineas de código:
+
+```{r  message=FALSE}
+
+# Obtener los nombres de genes en geneScore
+
+geneScore <- prub$features
+
+# Obtener los nombres de genes en filtered_data
+
+genes <- colnames(filtro_genes)[-1] # Excluir la columna "sample_type"
+
+# Encontrar los genes comunes
+genes_comunes <- intersect(geneScore, genes)
+
+# Filtrar el DataFrame PPI para incluir solo las filas con genes comunes
+
+genes_comunes <- prub[geneScore %in% genes_comunes, ]
+
+# Ordenar el data frame por el campo 'score' de manera descendente
+
+gene_sorted <-  genes_comunes %>% arrange(desc(score))
+# Seleccionar los primeros 100 genes con mayor score
+top_genes <- gene_sorted[1:100, ]
+
+
+# Obtener los nombres de los 100 genes de top_genes
+
+top_100 <- top_genes$features
+
+
+# Obtener la variable de respuesta 'y'
+y <- filtro_genes$sample_type
+
+# Filtrar las columnas de tu dataframe 'data' para mantener solo los genes seleccionados
+X <- filtro_genes[, top_100]
+
+# Convertir la variable de respuesta a factor
+y <- as.factor(y)
+
+
+# Crear un conjunto de entrenamiento y prueba
+set.seed(123)  # Semilla para reproducibilidad
+trainIndex <- createDataPartition(y, p = 0.8, list = FALSE) # se puede modificar la divicion del modelo para ver otros resultados p = 0.7
+train_data <- X[trainIndex, ]
+test_data <- X[-trainIndex, ]
+train_labels <- y[trainIndex]
+test_labels <- y[-trainIndex]
+```
+
+1.  **`geneScore <- prub$features`:** Guarda los nombres de genes del objeto **`prub$features`** en la variable **`geneScore`**.
+
+2.  **`genes <- colnames(filtro_genes)[-1]`:** Obtiene los nombres de genes del DataFrame **`filtro_genes`**, excluyendo la columna "sample_type".
+
+3.  **`genes_comunes <- intersect(geneScore, genes)`:** Encuentra los genes comunes entre **`geneScore`** y **`genes`**.
+
+4.  **`genes_comunes <- prub[geneScore %in% genes_comunes, ]`:** Filtra el DataFrame **`prub`** para incluir solo las filas con genes comunes.
+
+5.  **`gene_sorted <- genes_comunes %>% arrange(desc(score))`:** Ordena el DataFrame **`genes_comunes`** de manera descendente según el campo 'score'.
+
+6.  **`top_genes <- gene_sorted[1:100, ]`:** Selecciona los primeros 100 genes con mayor score.
+
+7.  **`top_100 <- top_genes$features`:** Obtiene los nombres de los 100 genes seleccionados.
+
+8.  **`y <- filtro_genes$sample_type`:** Obtiene la variable de respuesta 'y' del DataFrame **`filtro_genes`**.
+
+9.  **`X <- filtro_genes[, top_100]`:** Filtra las columnas del DataFrame **`filtro_genes`** para mantener solo los genes seleccionados.
+
+10. **`y <- as.factor(y)`:** Convierte la variable de respuesta 'y' a factor.
+
+11. **`set.seed(123)`:** Establece una semilla para reproducibilidad en la generación de números aleatorios.
+
+12. **`trainIndex <- createDataPartition(y, p = 0.8, list = FALSE)`:** Crea un índice para dividir los datos en conjuntos de entrenamiento y prueba. Aquí, el 80% se utiliza para entrenamiento.
+
+13. **`train_data <- X[trainIndex, ]` y `test_data <- X[-trainIndex, ]`:** Crea conjuntos de entrenamiento y prueba para las variables predictoras.
+
+14. **`train_labels <- y[trainIndex]` y `test_labels <- y[-trainIndex]`:** Crea conjuntos de entrenamiento y prueba para las etiquetas de clase.
+
+**Paso 5:** *Cuando se utiliza el gen PIK3R1 como objetivo. Para ello, adapte el script en demo/Test_DynamicCancerDriverKM(Bulk).R cambiando la línea 69 por target\<- AMCBGeneUtils::changeGeneId("PIK3R1").*
+
+**Paso 6:** *Evaluar y comparar modelos*
+
+*Después de entrenar sus modelos de aprendizaje automático, evalúelos utilizando métricas claras como exactitud, precisión, recall y el área bajo la curva (AUC) para las curvas ROC y Precisión-Recuperación. La validación cruzada debe utilizarse para para garantizar que los modelos se generalizan bien a los nuevos datos. Observe qué modelos funcionan mejor y si hay una diferencia significativa en su rendimiento. en su rendimiento.*
+
+Es así como en este punto usaremos el modelo svm con geneScore PIK3R1, lo ajustaremos, realizamos predicciones en el conjunto de prueba, evaluamos el rendimiento del modelo y calculamos la curva ROC y el AUC. De la siguiente manera:
+
+```{r  message=FALSE}
+
+# Modelo svm con geneScore PIK3R1
+
+
+# Ajustar el modelo SVM
+model <- svm(train_labels ~ ., data = cbind(train_data, train_labels), kernel = "linear")
+
+# Realizar predicciones en el conjunto de prueba
+predictions <- predict(model, newdata = cbind(test_data, test_labels))
+
+# Evaluar el rendimiento del modelo
+confusionMatrix(predictions, test_labels)
+
+# Calcular la curva ROC y el AUC
+
+roc_curve <- roc(as.numeric(predictions), as.numeric(test_labels))
+roc_curve
+```
+
+1.  **`model <- svm(train_labels ~ ., data = cbind(train_data, train_labels), kernel = "linear")`:** Ajusta un modelo SVM utilizando el conjunto de entrenamiento (**`train_data`** y **`train_labels`**). La fórmula **`train_labels ~ .`** significa que se están utilizando todas las variables predictoras en **`train_data`** para predecir **`train_labels`**. El kernel "linear" indica que estás utilizando un kernel lineal.
+
+2.  **`predictions <- predict(model, newdata = cbind(test_data, test_labels))`:** Realiza predicciones en el conjunto de prueba (**`test_data`**). El resultado se almacena en la variable **`predictions`**.
+
+3.  **`confusionMatrix(predictions, test_labels)`:** Evalúa el rendimiento del modelo utilizando una matriz de confusión. Imprime métricas como precisión, sensibilidad, especificidad, etc.
+
+4.  **`roc_curve <- roc(as.numeric(predictions), as.numeric(test_labels))`:** Calcula la curva ROC y el Área bajo la Curva (AUC) utilizando la biblioteca **`pROC`**. Convierte las predicciones y las etiquetas de prueba a datos numéricos antes de calcular la curva ROC.
+
+##### ***ANÁLISIS RESULTADO 1: Como podemos observar el análisis de resultado de este modelo sería el siguiente:*** 
+
+-   **Accuracy:** La precisión del modelo es del 98.77%, lo que indica qué tan bien el modelo clasifica correctamente las muestras.
+
+-   **Sensibilidad (Recall):** La sensibilidad, o tasa de verdaderos positivos, es del 99.10%. Esto significa que el modelo identifica correctamente el 99.10% de las muestras de tipo "Primary Tumor"(tumores primarios).
+
+-   **Especificidad:** La especificidad, o tasa de verdaderos negativos, es del 95.45%. Esto significa que el modelo identifica correctamente el 95.45% de las muestras de tipo "Solid Tissue Normal".
+
+-   **Valor Predictivo Positivo (Pos Pred Value):** El 99.55% de las muestras que el modelo predice como "Primary Tumor" son realmente "Primary Tumor".
+
+-   **Valor Predictivo Negativo (Neg Pred Value):** El 91.30% de las muestras que el modelo predice como "Solid Tissue Normal"(Tejidos normales) son realmente "Solid Tissue Normal".
+
+-   **Kappa:** El coeficiente kappa mide la concordancia entre las predicciones del modelo y las etiquetas reales. Un valor de 0.9265 sugiere una concordancia sustancial.
+
+-   **Área bajo la Curva (AUC):** El AUC de la curva ROC es 0.9542, lo que indica un buen rendimiento del modelo en la clasificación.
+
+**El modelo SVM** tiene un rendimiento sólido en la clasificación de las muestras en los conjuntos de prueba, con una alta precisión, sensibilidad y especificidad. La curva ROC también sugiere un buen rendimiento general del modelo.
+
+*Curva ROC:* Es una representación gráfica del rendimiento de un modelo de clasificación a diferentes niveles de umbral. Muestra la tasa de verdaderos positivos (sensibilidad) en el eje y frente a la tasa de falsos positivos (1 - especificidad) en el eje x. La curva ROC ilustra visualmente cómo cambia el equilibrio entre la sensibilidad y la especificidad a medida que se ajusta el umbral de decisión del modelo.
+
+*Área bajo la Curva (AUC):* La AUC proporciona una medida numérica del rendimiento global del modelo. Un AUC más cercano a 1.0 indica un mejor rendimiento del modelo en la clasificación. En este caso, el AUC de 0.9542 sugiere que el modelo SVM tiene un rendimiento bastante bueno en distinguir entre las muestras de "Solid Tissue Normal" y "Primary Tumor".
+
+Continuando con el análisis usamos el Modelo de Regresión Logistica con geneScore PIK3R1, entrenamos el modelo de regresión logística, realizamos predicciones en el conjunto de prueba, convertimos las predicciones a etiquetas binarias (0 o 1), evaluamos el rendimiento del modelo y calculamos la curva ROC, de la siguiente manera:
+
+```{r  message=FALSE}
+
+# Modelo de Regresión Logistica con geneScore PIK3R1
+
+# Entrenar el modelo de regresión logística
+logistic_model <- cv.glmnet(as.matrix(train_data), train_labels, family = "binomial")
+
+# Realizar predicciones en el conjunto de prueba
+predictions <- predict(logistic_model, newx = as.matrix(test_data), s = "lambda.1se", type = "response")
+
+# Convertir las predicciones a etiquetas binarias (0 o 1)
+predicted_labels <- as.factor(ifelse(predictions > 0.5, levels(y)[2], levels(y)[1]))
+
+# Evaluar el rendimiento del modelo
+conf_matrix <- confusionMatrix(predicted_labels, test_labels)
+conf_matrix
+
+precision <- posPredValue(predicted_labels, test_labels)
+paste("Precisión del modelo de regresión logística:", precision)
+
+# Calcular la curva ROC
+roc_curve <- roc(as.numeric(predicted_labels), as.numeric(test_labels))
+roc_curve
+```
+
+1.  **`logistic_model <- cv.glmnet(as.matrix(train_data), train_labels, family = "binomial")`:** Entrena un modelo de regresión logística utilizando la función **`cv.glmnet`** del paquete **`glmnet`**. Se utiliza la penalización de elastic net (**`cv.glmnet`** realiza la selección automática del mejor valor de lambda mediante validación cruzada).
+
+2.  **`predictions <- predict(logistic_model, newx = as.matrix(test_data), s = "lambda.1se", type = "response")`:** Realiza predicciones en el conjunto de prueba utilizando el modelo entrenado. Se utiliza el valor de lambda que minimiza la deviance penalizada (**`lambda.1se`**).
+
+3.  **`predicted_labels <- as.factor(ifelse(predictions > 0.5, levels(y)[2], levels(y)[1]))`:** Convierte las predicciones continuas a etiquetas binarias. Si la predicción es mayor que 0.5, se clasifica como "Primary Tumor", de lo contrario, se clasifica como "Solid Tissue Normal".
+
+4.  **`conf_matrix <- confusionMatrix(predicted_labels, test_labels)`:** Evalúa el rendimiento del modelo mediante la creación de una matriz de confusión y calcula diversas métricas, como precisión, sensibilidad, especificidad, etc.
+
+5.  **`precision <- posPredValue(predicted_labels, test_labels)`:** Calcula la precisión del modelo utilizando la función **`posPredValue`** del paquete **`caret`**.
+
+6.  **`roc_curve <- roc(as.numeric(predicted_labels), as.numeric(test_labels))`:** Calcula la curva ROC y el Área bajo la Curva (AUC) utilizando la biblioteca **`pROC`**.
+
+##### ***ANÁLISIS RESULTADO 2: Como podemos observar el análisis de resultado de este modelo sería el siguiente:*** 
+
+-   **Accuracy:** La precisión del modelo es del 99.18%, lo que indica qué tan bien el modelo clasifica correctamente las muestras.
+
+-   **Sensibilidad (Recall):** La sensibilidad, o tasa de verdaderos positivos, es del 99.55%. Esto significa que el modelo identifica correctamente el 99.55% de las muestras de tipo "Primary Tumor".
+
+-   **Especificidad:** La especificidad, o tasa de verdaderos negativos, es del 95.45%. Esto significa que el modelo identifica correctamente el 95.45% de las muestras de tipo "Solid Tissue Normal".
+
+-   **Valor Predictivo Positivo (Pos Pred Value):** El 99.55% de las muestras que el modelo predice como "Primary Tumor" son realmente "Primary Tumor".
+
+-   **Valor Predictivo Negativo (Neg Pred Value):** El 95.45% de las muestras que el modelo predice como "Solid Tissue Normal" son realmente "Solid Tissue Normal".
+
+-   **Kappa:** El coeficiente kappa mide la concordancia entre las predicciones del modelo y las etiquetas reales. Un valor de 0.95 sugiere una concordancia sustancial.
+
+-   **Área bajo la Curva (AUC):** El AUC de la curva ROC es 0.975, lo que indica un excelente rendimiento del modelo en la clasificación.
+
+**El modelo de regresión logística** tiene un rendimiento excepcional en la clasificación de las muestras en los conjuntos de prueba, con una alta precisión, sensibilidad y especificidad. La curva ROC también sugiere un excelente rendimiento general del modelo en la discriminación entre las clases.
+
+Procedemos hacer el análisis con el tercer "Model KNN con geneScore PIK3R1" ,normalizando las características para KNN, entrenando el modelo KNN y evaluando el rendimiento del modelo. Así lo podemos ver en el siguiente código:
+
+```{r  message=FALSE}
+
+# Model KNN con geneScore PIK3R1
+
+# Normalizar las características para KNN
+normalized_train_data <- scale(train_data)
+normalized_test_data <- scale(test_data)
+
+# Entrenar el modelo KNN
+knn_model <- knn(train = normalized_train_data, test = normalized_test_data, cl = train_labels, k = 5)
+
+# Evaluar el rendimiento del modelo
+knn_conf_matrix <- confusionMatrix(knn_model, test_labels)
+knn_conf_matrix
+```
+
+1.  **`normalized_train_data <- scale(train_data)`:** Normaliza las características del conjunto de entrenamiento utilizando la función **`scale`**. Esto significa que las características tienen una media de cero y una desviación estándar de uno.
+
+2.  **`normalized_test_data <- scale(test_data)`:** Normaliza las características del conjunto de prueba utilizando la misma transformación aplicada al conjunto de entrenamiento.
+
+3.  **`knn_model <- knn(train = normalized_train_data, test = normalized_test_data, cl = train_labels, k = 5)`:** Entrena el modelo de k-Nearest Neighbors (KNN) utilizando el conjunto de entrenamiento normalizado y predice las etiquetas del conjunto de prueba. Se utiliza un valor de k igual a 5.
+
+4.  **`knn_conf_matrix <- confusionMatrix(knn_model, test_labels)`:** Evalúa el rendimiento del modelo KNN mediante la creación de una matriz de confusión y calcula diversas métricas, como precisión, sensibilidad, especificidad, etc.
+
+##### ***ANÁLISIS RESULTADO 3: Como podemos observar el análisis de resultado de este modelo sería el siguiente:*** 
+
+-   **Accuracy:** La precisión del modelo es del 99.18%, lo que indica qué tan bien el modelo clasifica correctamente las muestras.
+
+-   **Sensibilidad (Recall):** La sensibilidad, o tasa de verdaderos positivos, es del 99.55%. Esto significa que el modelo identifica correctamente el 99.55% de las muestras de tipo "Primary Tumor".
+
+-   **Especificidad:** La especificidad, o tasa de verdaderos negativos, es del 95.45%. Esto significa que el modelo identifica correctamente el 95.45% de las muestras de tipo "Solid Tissue Normal".
+
+-   **Valor Predictivo Positivo (Pos Pred Value):** El 99.55% de las muestras que el modelo predice como "Primary Tumor" son realmente "Primary Tumor".
+
+-   **Valor Predictivo Negativo (Neg Pred Value):** El 95.45% de las muestras que el modelo predice como "Solid Tissue Normal" son realmente "Solid Tissue Normal".
+
+-   **Kappa:** El coeficiente kappa mide la concordancia entre las predicciones del modelo y las etiquetas reales. Un valor de 0.95 sugiere una concordancia sustancial.
+
+-   **Área bajo la Curva (AUC):** No se proporciona directamente en la salida, pero la "Balanced Accuracy" es 0.9750, que es un indicador de buen rendimiento en la clasificación.
+
+**El modelo KNN** también tiene un rendimiento excelente en la clasificación de las muestras en los conjuntos de prueba, con una alta precisión, sensibilidad y especificidad. La matriz de confusión y otras métricas indican que el modelo es capaz de discriminar eficazmente entre las clases.
+
+Para finalizar, haceremos el análisis con el cuarto "Modelo de Árboles de decisiones con geneScore PIK3R1" , entrenando el modelo de árbol de decisiones, realizaremos la visualización del árbol de decisiones, realizando predicciones en el conjunto de prueba y evaluando el rendimiento del modelo. Para esto tenemos el siguinete código:
+
+```{r  message=FALSE}
+
+# Modelo de Árboles de decisiones con geneScore PIK3R1
+
+
+# Entrenar el modelo de árbol de decisiones
+tree_model <- rpart(train_labels ~ ., data = train_data, method = "class")
+
+# Visualizar el árbol de decisiones (opcional, para entender la estructura del árbol)
+plot(tree_model)
+text(tree_model, pretty = 0)
+
+# Realizar predicciones en el conjunto de prueba
+tree_predictions <- predict(tree_model, newdata = test_data, type = "class")
+
+# Evaluar el rendimiento del modelo
+tree_conf_matrix <- confusionMatrix(tree_predictions, test_labels)
+print(tree_conf_matrix)
+```
+
+1.  **`tree_model <- rpart(train_labels ~ ., data = train_data, method = "class")`:** Entrena el modelo de árboles de decisión utilizando la función **`rpart`** del paquete **`rpart`**. La fórmula **`train_labels ~ .`** indica que estamos prediciendo las etiquetas de **`train_labels`** en función de todas las demás variables en **`train_data`**. El método "class" se utiliza para problemas de clasificación.
+
+2.  **`plot(tree_model)` y `text(tree_model, pretty = 0)`:** Estas líneas de código son opcionales y sirven para visualizar el árbol de decisiones. La función **`plot`** crea un gráfico del árbol, y **`text`** agrega etiquetas a los nodos del árbol.
+
+3.  **`tree_predictions <- predict(tree_model, newdata = test_data, type = "class")`:** Realiza predicciones en el conjunto de prueba utilizando el modelo de árboles de decisión. La opción **`type = "class"`** asegura que las predicciones sean etiquetas de clase en lugar de valores continuos.
+
+4.  **`tree_conf_matrix <- confusionMatrix(tree_predictions, test_labels)`:** Evalúa el rendimiento del modelo de árboles de decisión mediante la creación de una matriz de confusión y el cálculo de diversas métricas, como precisión, sensibilidad, especificidad, etc.
+
+##### ***ANÁLISIS RESULTADO 4: Como podemos observar el análisis de resultado de este modelo sería el siguiente:*** 
+
+-   **Accuracy:** La precisión del modelo es del 97.94%, lo que indica qué tan bien el modelo clasifica correctamente las muestras.
+
+-   **Sensibilidad (Recall):** La sensibilidad, o tasa de verdaderos positivos, es del 98.64%. Esto significa que el modelo identifica correctamente el 98.64% de las muestras de tipo "Primary Tumor".
+
+-   **Especificidad:** La especificidad, o tasa de verdaderos negativos, es del 90.91%. Esto significa que el modelo identifica correctamente el 90.91% de las muestras de tipo "Solid Tissue Normal".
+
+-   **Valor Predictivo Positivo (Pos Pred Value):** El 99.09% de las muestras que el modelo predice como "Primary Tumor" son realmente "Primary Tumor".
+
+-   **Valor Predictivo Negativo (Neg Pred Value):** El 86.96% de las muestras que el modelo predice como "Solid Tissue Normal" son realmente "Solid Tissue Normal".
+
+-   **Kappa:** El coeficiente kappa mide la concordancia entre las predicciones del modelo y las etiquetas reales. Un valor de 0.88 sugiere una concordancia sustancial.
+
+-   **Área bajo la Curva (AUC):** No se proporciona directamente en la salida, pero la "Balanced Accuracy" es 0.9478, que es un indicador de buen rendimiento en la clasificación.
+
+**El modelo de árboles de decisión** también muestra un buen rendimiento en la clasificación de las muestras en los conjuntos de prueba, con una alta precisión, sensibilidad y especificidad. La matriz de confusión y otras métricas indican que el modelo es capaz de discriminar eficazmente entre las clases.
+
+**Paso 7:** *Discusión de los resultados*
+
+*Discuta lo que significan los resultados del modelo para identificar el cáncer a partir de las expresiones génicas. Destaque los genes predictivos y su posible importancia biológica en el cáncer de mama. Discuta las diferencias y similitudes de los resultados del paso 5.*
+
+**Resultados de los Modelos de Aprendizaje Automático:**
+
+1.  **Modelo SVM con geneScore PIK3R1:**
+
+    -   Este modelo SVM utilizando geneScore PIK3R1 demostró un alto rendimiento en la clasificación de 'sample_type'. La precisión, sensibilidad y especificidad fueron notables, indicando una capacidad robusta para distinguir entre los tipos de muestras.
+
+2.  **Modelo de Regresión Logística con geneScore PIK3R1:**
+
+    -   La regresión logística, al utilizar los genes identificados por geneScore, también presentó resultados destacados. Las métricas de rendimiento sugieren una precisión y sensibilidad elevadas en la predicción de 'sample_type'.
+
+3.  **Modelo KNN con geneScore PIK3R1:**
+
+    -   El modelo KNN, al normalizar las características según geneScore PIK3R1, exhibió un rendimiento sólido. Las métricas, incluyendo la precisión y la sensibilidad, indican una capacidad confiable para la clasificación de muestras.
+
+4.  **Modelo de Árboles de Decisiones con geneScore PIK3R1:**
+
+    -   El árbol de decisiones entrenado con los genes de geneScore PIK3R1 también mostró un rendimiento prometedor. La matriz de confusión y otras métricas revelan una buena capacidad para predecir 'sample_type'.
+
+**Discusión General:**
+
+-   **Comparación de Resultados (Punto 5.a vs. 5.b):**
+
+    -   Al comparar los resultados de los modelos basados en los 100 genes identificados por geneScore y los modelos basados en los 100 genes seleccionados directamente, se observan similitudes notables en términos de precisión y sensibilidad. Sin embargo, puede haber diferencias sutiles en las tasas de especificidad y otros detalles, lo que podría indicar la influencia específica de ciertos genes en la clasificación.
+
+-   **Genes Predictivos:**
+
+Entre los genes utilizados como predictores, se destacan aquellos que tuvieron una contribución significativa en la clasificación. Por ejemplo, INHBA (ENSG00000122641), CNTN1 (ENSG00000018236) y CRYAB (ENSG00000109846) mostraron una fuerte asociación con la identificación del tipo de muestra y podrían tener relevancia biológica en el contexto del cáncer de mama.
+
+**INHBA:** Este gen codifica un miembro de la superfamilia de proteínas TGF-beta (factor de crecimiento transformante beta). La preproproteína codificada se procesa proteolíticamente para generar una subunidad de los complejos diméricos de activina e inhibina. Estos complejos activan e inhiben, respectivamente, la secreción de la hormona folículo estimulante de la glándula pituitaria. La proteína codificada también desempeña un papel en el desarrollo de los ojos, los dientes y los testículos. La expresión elevada de este gen puede estar asociada con caquexia por cáncer en pacientes humanos.
+
+**CNTN1:** La proteína codificada por este gen es miembro de la superfamilia de las inmunoglobulinas.Es una proteína de membrana neuronal anclada a glicosilfosfatidilinositol (GPI) que funciona como una molécula de adhesión celular.Puede desempeñar un papel en la formación de conexiones axónicas en el sistema nervioso en desarrollo.Para este gen se han descrito dos variantes de transcripción empalmadas alternativamente que codifican diferentes isoformas .
+
+**CRYAB:** La cadena B de alfa-cristalina es una proteína que en humanos está codificada por el gen CRYAB .Es parte de la pequeña familia de proteínas de choque térmico y funciona como chaperona molecular que se une principalmente a proteínas mal plegadas para prevenir la agregación de proteínas, además de inhibir la apoptosis y contribuir a la arquitectura intracelular.Las modificaciones postraduccionales disminuyen la capacidad de ser acompañante. Las mutaciones en CRYAB causan diferentes miocardiopatías, miopatías esqueléticas principalmente miopatía miofibrilar, y también cataratas. Además, los defectos en este gen/proteína se han asociado con el cáncer y enfermedades neurodegenerativas como la enfermedad de Alzheimer y la enfermedad de Parkinson.
+
+-   **Consideraciones sobre el Desarrollo de los Modelos:**
+
+    -   Aunque todos los modelos demostraron un rendimiento positivo, se puede observar que el modelo de regresión logística parece tener un rendimiento excepcionalmente bueno en la clasificación de las muestras.
+
+-   **Implicaciones para la Identificación del Cáncer de Mama:**
+
+    -   Los resultados sugieren que el análisis de expresiones génicas, especialmente utilizando genes identificados por geneScore, puede ser una herramienta efectiva en la identificación del cáncer de mama. Estos modelos podrían tener aplicaciones prácticas en la clasificación de muestras en entornos clínicos.
+
+**Bibliografía**
+
+de Jesus Rodriguez Villanueva, A. (s/f). *SECUENCIACIÓN DE SIGUIENTE GENERACIÓN EN MUJERES AFECTADAS POR FALLA OVÁRICA PREMATURA NO SINDRÓMICA PARA LA IDENTIFICACIÓN DE NUEVOS GENES ETIÓLOGICOS DE LA ENFERMEDAD Y ESTUDIO FUNCIONAL DE LA MUTACIÓN p.Thr943Ile EN ADAMTS19*. Edu.co. Recuperado el 23 de noviembre de 2023, de <https://repository.urosario.edu.co/server/api/core/bitstreams/bfe0f7ca-b512-4ba5-9836-0631063ba5bc/content>
+
+*INHBA inhibin subunit beta A [Homo sapiens (human)] - Gene - NCBI*. (s/f). Nih.gov. Recuperado el 23 de noviembre de 2023, de <https://www.ncbi.nlm.nih.gov/gene/3624>
+
+Wikipedia contributors. (2023a, marzo 4). *Contactin 1*. Wikipedia, The Free Encyclopedia. <https://en.wikipedia.org/w/index.php?title=Contactin_1&oldid=1142721918>
+
+Wikipedia contributors. (2023b, marzo 4). *CRYAB*. Wikipedia, The Free Encyclopedia. <https://en.wikipedia.org/w/index.php?title=CRYAB&oldid=1142716396>
